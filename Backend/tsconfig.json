@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./",
+    "module": "CommonJS",
+    "target": "ES6",
+    "strict": true,
+    "esModuleInterop": true,
+    "baseUrl": "./",
+    "paths": {
+      "@Interfaces/*": ["Interfaces/*"]
+    }
+  },
+  "include": ["server.ts", "Controllers/**/*.ts", "models/**/*.ts", "routes/**/*.ts", "Interfaces/**/*.ts"]
+}

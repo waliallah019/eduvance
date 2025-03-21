@@ -34,6 +34,10 @@ const LoginPage = () => {
           localStorage.setItem('userRole', 'admin');
           navigate('/admin-dashboard');
           break;
+        case 'super-admin':
+          localStorage.setItem('userRole', 'super-admin');
+          navigate('/admin-dashboard');
+          break;
         case 'teacher':
           localStorage.setItem('userRole', 'teacher');
           navigate('/teacher-dashboard');

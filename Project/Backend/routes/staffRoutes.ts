@@ -5,12 +5,14 @@ import {
   createStaff,
   updateStaff,
   deleteStaff,
+  getTeachers,
 } from "../controllers/staffController";
 import { check } from "express-validator";
 
 const router = express.Router();
 
 router.get("/", getStaff);
+router.get("/teachers", getTeachers);
 router.get("/:id", getStaffById);
 router.post(
   "/",

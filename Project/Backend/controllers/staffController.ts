@@ -3,7 +3,7 @@ import Staff, { IStaff } from "../models/Staff";
 import User from "../models/User"; // Import the User model
 import { v2 as cloudinary } from "cloudinary";
 import { validationResult } from "express-validator";
-import mongoose from "mongoose";
+import Class from "../models/Class";
 
 // Helper function to upload files to Cloudinary
 const uploadToCloudinary = async (
@@ -300,4 +300,24 @@ const deleteStaff = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export { getStaff, getStaffById, createStaff, updateStaff, deleteStaff };
+// Get Active Teachers
+const getTeachers = async (req: Request, res: Response) => {
+  try {
+    const teachers = await Staff.find({ isActive: true , type: "teaching" });
+    res.status(200).json(teachers);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch teachers", error: err });
+  }
+};
+
+// Get Active Classes
+const getClasses = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const classes = await Class.find({ isActive: 1 });
+    res.status(200).json(classes);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching classes", error });
+  }
+};
+
+export { getStaff, getStaffById, createStaff, updateStaff, deleteStaff, getTeachers, getClasses };

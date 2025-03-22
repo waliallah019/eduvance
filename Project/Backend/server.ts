@@ -8,6 +8,10 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const staffRoutes = require('./routes/staffRoutes');
+const courseRoutes = require('./routes/courseRoutes');
+const classRoutes = require('./routes/classRoutes');
+const sectionRoutes = require('./routes/sectionRoutes');
+const teacherAssignmentRoutes = require('./routes/CourseAssignmentRoutes');
 
 
 const app = express();
@@ -25,6 +29,10 @@ app.use(fileUpload({ useTempFiles: true }));
 app.use('/api/auth', authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/classes", classRoutes);
+app.use("/api", sectionRoutes);
+app.use("/api", teacherAssignmentRoutes);
 
 // Error handling middleware
 app.use(notFound);

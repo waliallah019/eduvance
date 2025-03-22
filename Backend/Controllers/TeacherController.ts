@@ -5,12 +5,12 @@ import Class from "../models/Class";
 
 
 // Get Active Teachers
-export const getTeachers = async (req: Request, res: Response): Promise<void> => {
+export const getTeachers = async (req: Request, res: Response) => {
   try {
-    const teachers = await Teacher.find({ isActive: 1 });
+    const teachers = await Teacher.find({ isActive: 1 }); // Fetch only active teachers
     res.status(200).json(teachers);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching teachers", error });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch teachers", error: err });
   }
 };
 

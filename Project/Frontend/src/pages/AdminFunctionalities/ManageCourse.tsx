@@ -131,14 +131,14 @@ useEffect(() => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(courseToSave),
           });
-          successMessage = "✅ Course updated successfully!";
+          successMessage = "Course updated successfully!";
         } else {
           response = await fetch("http://localhost:5000/api/courses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(courseToSave),
           });
-          successMessage = "✅ Course added successfully!";
+          successMessage = "Course added successfully!";
         }
   
         const data = await response.json();
@@ -164,9 +164,9 @@ useEffect(() => {
         toast.success(successMessage, { autoClose: 3000 });
       } catch (err: unknown) {
           console.error("Failed to save course:", (err as Error).message);
-          toast.error(`❌ ${(err as Error).message}`, { autoClose: 5000 });
+          toast.error(`${(err as Error).message}`, { autoClose: 5000 });
         console.error("Failed to save course:", err);
-        toast.error("❌ An unexpected error occurred.", { autoClose: 5000 });
+        toast.error("An unexpected error occurred.", { autoClose: 5000 });
       }
     } else {
       toast.warn("⚠️ Please fill in all fields before saving.", { autoClose: 3000 });
@@ -191,11 +191,11 @@ useEffect(() => {
       }
   
       setCourses(courses.filter((course) => course._id !== id));
-      toast.success("✅ Course deleted successfully!", { autoClose: 3000 });
+      toast.success("Course deleted successfully!", { autoClose: 3000 });
   
     } catch (err: unknown) {
       console.error("Failed to delete course:", err);
-      toast.error(`❌ ${(err as Error).message}`, { autoClose: 5000 });
+      toast.error(`${(err as Error).message}`, { autoClose: 5000 });
     }
   };
   
@@ -230,76 +230,82 @@ useEffect(() => {
   
   const handleSaveTeacherAssignments = async () => {
     if (selectedCourseId !== null && selectedTeachers.length > 0 && selectedSections.length > 0) {
-      const course = courses.find((course) => course._id === selectedCourseId);
+      try {
+        // Find course
+        const course = courses.find((course) => course._id === selectedCourseId);
+        if (!course) throw new Error("Course not found");
   
-      if (course) {
-        const assignments = selectedSections.map((sectionId) => {
+        //Clear any previous invalid assignments
+        const assignments: { section: string; teacher: string; course: string; timeSlot: string }[] = [];
+  
+        // Create valid assignments
+        selectedSections.forEach((sectionId) => {
           const section = sections.find((section) => section._id === sectionId);
-          return {
-            section: section?._id,
-            teacher: selectedTeachers[0],
-            course: course._id,
-            timeSlot: "None",
-          };
+          if (section) {
+            assignments.push({
+              section: section._id,
+              teacher: selectedTeachers[0],
+              course: course._id,
+              timeSlot: "None",
+            });
+          }
         });
-        try {
-          // Step 1: Save teacher assignments
-          const assignmentResponse = await fetch("http://localhost:5000/api/teacher-assignments", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(assignments),
-          });
   
-          if (!assignmentResponse.ok) throw new Error("Failed to save teacher assignments");
+        //Prevent empty assignments from being sent
+        if (assignments.length === 0) throw new Error("No valid assignments to save");
   
-          // Step 2: Update course instructors
-          const assignedTeachers = selectedTeachers.map((teacherId) => {
-            const teacher = teachers.find((t) => t._id === teacherId);
-            return teacher?.name || "Unknown Teacher";
-          });
+        // Step 1: Save teacher assignments
+        const assignmentResponse = await fetch("http://localhost:5000/api/teacher-assignments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(assignments),
+        });
   
-          const updatedCourse = { ...course, instructors: assignedTeachers };
+        if (!assignmentResponse.ok) throw new Error("Failed to save teacher assignments");
   
-          // Step 3: Save updated course
-          const courseResponse = await fetch(`http://localhost:5000/api/courses/${selectedCourseId}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updatedCourse),
-          });
+        // Step 2: Update course instructors
+        const assignedTeachers = selectedTeachers.map((teacherId) => {
+          const teacher = teachers.find((t) => t._id === teacherId);
+          return teacher?.name || "Unknown Teacher";
+        });
   
-          if (!courseResponse.ok) throw new Error("Failed to update course with assigned teachers");
+        const updatedCourse = { ...course, instructors: assignedTeachers };
   
-          // Step 4: Update state
-          const updatedCourseData = await courseResponse.json();
-          setCourses((prevCourses) =>
-            prevCourses.map((c) => (c._id === selectedCourseId ? updatedCourseData : c))
-          );
+        // Step 3: Save updated course
+        const courseResponse = await fetch(`http://localhost:5000/api/courses/${selectedCourseId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedCourse),
+        });
   
-          // Step 5: Reset modal and selections
-          setAssignModalOpen(false);
-          setSelectedSections([]);
-          setSelectedTeachers([]);
-          toast.success("✅ Teachers assigned successfully!", { autoClose: 2000 });
-          
+        if (!courseResponse.ok) throw new Error("Failed to update course with assigned teachers");
   
-        } catch (err) {
-          // Error Message
-          
-          toast.error(`❌ ${(err as Error).message}`, {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            theme: "colored",
-          });
+        // Step 4: Update state
+        const updatedCourseData = await courseResponse.json();
+        setCourses((prevCourses) =>
+          prevCourses.map((c) => (c._id === selectedCourseId ? updatedCourseData : c))
+        );
   
-          console.error("Error:", err);
-        }
+        // Step 5: Reset modal and selections
+        setAssignModalOpen(false);
+        setSelectedSections([]); // ✅ Clear Sections
+        setSelectedTeachers([]); // ✅ Clear Teachers
+        toast.success("Teachers assigned successfully!", { autoClose: 2000 });
+  
+      } catch (err) {
+        toast.error(` ${(err as Error).message}`, {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "colored",
+        });
+  
+        console.error("Error:", err);
       }
     } else {
-      // Warning Message
       toast.warn("⚠️ Please select at least one section and one teacher.", {
         position: "top-right",
         autoClose: 2000,

@@ -2,14 +2,8 @@ import { useState, useEffect } from "react";
 import { Course } from "../../interface/course.interface";
 import { Class, Section } from "../../interface/class.interface";
 import { TeacherStaff as Teacher } from "../../interface/TeacherStaff";
-
-// interface TeacherAssignment {
-//   _id: string;
-//   section: Section;
-//   teacher: Teacher; // Change to Teacher object
-//   course: Course;
-//   timeSlot: string;
-// }
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 
 
@@ -129,53 +123,56 @@ useEffect(() => {
       const courseToSave = { ...newCourse, classIds: selectedClassIds };
       try {
         let response;
+        let successMessage = "";
+  
         if (isEditing && editingCourseId) {
           response = await fetch(`http://localhost:5000/api/courses/${editingCourseId}`, {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(courseToSave),
           });
+          successMessage = "✅ Course updated successfully!";
         } else {
           response = await fetch("http://localhost:5000/api/courses", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(courseToSave),
           });
+          successMessage = "✅ Course added successfully!";
         }
-
-        if (!response.ok) {
-          throw new Error("Failed to save course");
-        }
-
+  
         const data = await response.json();
+  
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to save course");
+        }
+  
         if (isEditing) {
           setCourses(courses.map((course) => (course._id === editingCourseId ? data : course)));
         } else {
           setCourses([...courses, data]);
         }
-        setNewCourse({
-          _id: "",
-          name: "",
-          code: "",
-          instructors: [],
-          description: "",
-          classIds: [],
-          isActive: 1,
-        });
+  
+        // Reset form and close modal
+        setNewCourse({ _id: "", name: "", code: "", instructors: [], description: "", classIds: [], isActive: 1 });
         setSelectedClassIds([]);
         setModalOpen(false);
         setIsEditing(false);
         setEditingCourseId(null);
-      } catch (err) {
+  
+        // Show success toast
+        toast.success(successMessage, { autoClose: 3000 });
+      } catch (err: unknown) {
+          console.error("Failed to save course:", (err as Error).message);
+          toast.error(`❌ ${(err as Error).message}`, { autoClose: 5000 });
         console.error("Failed to save course:", err);
+        toast.error("❌ An unexpected error occurred.", { autoClose: 5000 });
       }
+    } else {
+      toast.warn("⚠️ Please fill in all fields before saving.", { autoClose: 3000 });
     }
   };
-
+  
   const handleEditCourse = (course: Course) => {
     setNewCourse(course);
     setSelectedClassIds(course.classIds);
@@ -183,23 +180,25 @@ useEffect(() => {
     setEditingCourseId(course._id);
     setModalOpen(true);
   };
+  
 
   const handleDeleteCourse = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/courses/${id}`, {
-        method: "DELETE",
-      });
-
+      const response = await fetch(`http://localhost:5000/api/courses/${id}`, { method: "DELETE" });
+      
       if (!response.ok) {
         throw new Error("Failed to delete course");
       }
-
+  
       setCourses(courses.filter((course) => course._id !== id));
-    } catch (err) {
+      toast.success("✅ Course deleted successfully!", { autoClose: 3000 });
+  
+    } catch (err: unknown) {
       console.error("Failed to delete course:", err);
+      toast.error(`❌ ${(err as Error).message}`, { autoClose: 5000 });
     }
   };
-
+  
   const handleAssignTeachers = async (courseId: string, currentTeachers: string[]) => {
     setSelectedCourseId(courseId);
     setSelectedTeachers(currentTeachers);
@@ -228,61 +227,49 @@ useEffect(() => {
     );
   };
 
+  
   const handleSaveTeacherAssignments = async () => {
     if (selectedCourseId !== null && selectedTeachers.length > 0 && selectedSections.length > 0) {
       const course = courses.find((course) => course._id === selectedCourseId);
   
       if (course) {
-        // Step 1: Save teacher assignments
         const assignments = selectedSections.map((sectionId) => {
           const section = sections.find((section) => section._id === sectionId);
           return {
-            section: section?._id, // Send section ID
-            teacher: selectedTeachers[0], // Send teacher ID
-            course: course._id, // Send course ID
-            timeSlot: "None", // Default time slot
+            section: section?._id,
+            teacher: selectedTeachers[0],
+            course: course._id,
+            timeSlot: "None",
           };
         });
-  
         try {
-          // Save teacher assignments
+          // Step 1: Save teacher assignments
           const assignmentResponse = await fetch("http://localhost:5000/api/teacher-assignments", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(assignments),
           });
   
-          if (!assignmentResponse.ok) {
-            throw new Error("Failed to save teacher assignments");
-          }
+          if (!assignmentResponse.ok) throw new Error("Failed to save teacher assignments");
   
-          // Step 2: Update the course's instructors with the assigned teachers' names
+          // Step 2: Update course instructors
           const assignedTeachers = selectedTeachers.map((teacherId) => {
             const teacher = teachers.find((t) => t._id === teacherId);
             return teacher?.name || "Unknown Teacher";
           });
   
-          const updatedCourse = {
-            ...course,
-            instructors: assignedTeachers, // Update the instructors array with teacher names
-          };
+          const updatedCourse = { ...course, instructors: assignedTeachers };
   
-          // Step 3: Save the updated course to the backend
+          // Step 3: Save updated course
           const courseResponse = await fetch(`http://localhost:5000/api/courses/${selectedCourseId}`, {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updatedCourse),
           });
   
-          if (!courseResponse.ok) {
-            throw new Error("Failed to update course with assigned teachers");
-          }
+          if (!courseResponse.ok) throw new Error("Failed to update course with assigned teachers");
   
-          // Step 4: Update the state with the new course data
+          // Step 4: Update state
           const updatedCourseData = await courseResponse.json();
           setCourses((prevCourses) =>
             prevCourses.map((c) => (c._id === selectedCourseId ? updatedCourseData : c))
@@ -292,20 +279,45 @@ useEffect(() => {
           setAssignModalOpen(false);
           setSelectedSections([]);
           setSelectedTeachers([]);
-          alert("Teacher successfully assigned to sections and course updated!");
+          toast.success("✅ Teachers assigned successfully!", { autoClose: 2000 });
+          
+  
         } catch (err) {
-          console.error("Failed to save teacher assignments or update course:", err);
+          // Error Message
+          
+          toast.error(`❌ ${(err as Error).message}`, {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "colored",
+          });
+  
+          console.error("Error:", err);
         }
       }
     } else {
-      alert("Please select at least one section and one teacher.");
+      // Warning Message
+      toast.warn("⚠️ Please select at least one section and one teacher.", {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: false,
+        theme: "colored",
+      });
     }
   };
-
+  
   return (
+
     <div className="bg-[#29293d] p-6 rounded-lg shadow-md border border-gray-700">
       <h3 className="text-2xl font-semibold text-yellow-400 mb-4">Manage Courses</h3>
-
+      {/* Your App Content */}
+      <ToastContainer />
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
           type="text"

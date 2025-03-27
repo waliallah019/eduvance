@@ -6,10 +6,12 @@ const LoginPage = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // Loading state
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true); // Start loading
 
     try {
       const response = await fetch('http://localhost:5000/api/auth/login', {
@@ -56,6 +58,8 @@ const LoginPage = () => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMessage);
+    } finally {
+      setIsLoading(false); // Stop loading
     }
   };
 
@@ -98,9 +102,20 @@ const LoginPage = () => {
 
           <button
             type="submit"
-            className="w-full bg-yellow-400 text-black py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-all"
+            className="w-full bg-yellow-400 text-black py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-all flex items-center justify-center"
+            disabled={isLoading}
           >
-            Sign In
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 mr-2 text-black" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Signing In...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 

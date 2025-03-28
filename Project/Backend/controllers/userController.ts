@@ -3,7 +3,6 @@ import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import { hashPassword } from "../utils/hashPassword";
 import { Request, Response } from "express";
-import { validationResult } from "express-validator";
 
 dotenv.config();
 

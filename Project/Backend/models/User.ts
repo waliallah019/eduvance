@@ -7,7 +7,7 @@ const UserSchema: Schema = new Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ["admin", "teacher", "finance-manager", "student"], required: true }
+  role: { type: String, enum: ["admin", "teacher", "finance-manager", "student","non-teaching-staff"], required: true }
 });
 
 // Hash password before saving user

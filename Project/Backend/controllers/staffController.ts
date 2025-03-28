@@ -86,61 +86,62 @@ const createStaff = async (req: Request, res: Response): Promise<void> => {
       joiningDate,
       type,
       role,
-      timeSlotStart, // time slot start
-      timeSlotEnd, // time slot end
+      timeSlotStart,
+      timeSlotEnd,
       username,
       password,
     } = req.body;
+
+    const teachingRoles = [
+      "Teacher",
+      "Senior Teacher",
+      "Head of Department",
+      "Coordinator",
+    ];
+    const nonTeachingRoles = [
+      "Librarian",
+      "Administrator",
+      "Maintenance Staff",
+      "Lab Assistant",
+      "Clerk",
+    ];
+
+    let assignedRole = "admin"; // Default fallback
+
+    if (teachingRoles.includes(role)) {
+      assignedRole = "teacher";
+    } else if (nonTeachingRoles.includes(role)) {
+      assignedRole = "non-teaching-staff";
+    }
 
     // Check if user already exists
     let user = await User.findOne({ email });
 
     if (user) {
       res.status(400).json({ errors: [{ msg: "User already exists" }] });
-      return; // Avoid further execution
+      return;
     }
+
     // Create a new user
     user = new User({
       username,
       email,
       password,
-      role: role === "Teacher" ? "teacher" : "admin",
+      role: assignedRole, // Use the assigned role
     });
 
     // Hash the password
     await user.save();
 
     // Upload documents to Cloudinary
-    const resumeUrl = req.files?.resume
-      ? await uploadToCloudinary(
-        (req.files?.resume as any).tempFilePath,
-        "staff-documents",
-      )
-      : null;
-    const cnicCopyUrl = req.files?.cnicCopy
-      ? await uploadToCloudinary(
-        (req.files?.cnicCopy as any).tempFilePath,
-        "staff-documents",
-      )
-      : null;
-    const educationCertificatesUrl = req.files?.educationCertificates
-      ? await uploadToCloudinary(
-        (req.files?.educationCertificates as any).tempFilePath,
-        "staff-documents",
-      )
-      : null;
-    const experienceCertificatesUrl = req.files?.experienceCertificates
-      ? await uploadToCloudinary(
-        (req.files?.experienceCertificates as any).tempFilePath,
-        "staff-documents",
-      )
-      : null;
-    const recentPhotoUrl = req.files?.recentPhoto
-      ? await uploadToCloudinary(
-        (req.files?.recentPhoto as any).tempFilePath,
-        "staff-documents",
-      )
-      : null;
+    const uploadDocument = async (file: any, folder: string) => 
+      file ? await uploadToCloudinary(file.tempFilePath, folder) : null;
+
+    const resumeUrl = await uploadDocument(req.files?.resume, "staff-documents");
+    const cnicCopyUrl = await uploadDocument(req.files?.cnicCopy, "staff-documents");
+    const educationCertificatesUrl = await uploadDocument(req.files?.educationCertificates, "staff-documents");
+    const experienceCertificatesUrl = await uploadDocument(req.files?.experienceCertificates, "staff-documents");
+    const recentPhotoUrl = await uploadDocument(req.files?.recentPhoto, "staff-documents");
 
     if (!user._id) {
       throw new Error("User ID is undefined");
@@ -157,8 +158,8 @@ const createStaff = async (req: Request, res: Response): Promise<void> => {
       employmentType,
       department,
       joiningDate,
-      timeSlotStart, // time slot start
-      timeSlotEnd, // time slot end
+      timeSlotStart,
+      timeSlotEnd,
       documents: {
         resume: resumeUrl || "",
         cnicCopy: cnicCopyUrl || "",
@@ -168,7 +169,7 @@ const createStaff = async (req: Request, res: Response): Promise<void> => {
       },
       type,
       role,
-      user: user._id, // Assign the User's ObjectId to the staff
+      user: user._id,
     });
 
     await newStaff.save();

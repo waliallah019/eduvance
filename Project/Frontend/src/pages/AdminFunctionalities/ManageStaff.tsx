@@ -13,13 +13,16 @@ const ManageTeachers = () => {
   const [activeTab, setActiveTab] =
     useState<"teaching" | "non-teaching">("teaching");
   const [staffList, setStaffList] = useState<TeacherStaff[]>([]);
+  const [filteredStaffList, setFilteredStaffList] = useState<TeacherStaff[]>([]);
   const [selectedDepartment, setSelectedDepartment] =
     useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isAdding, setIsAdding] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -102,12 +105,11 @@ const ManageTeachers = () => {
       const res = await axios.get<TeacherStaff[]>(
         "http://localhost:5000/api/staff",
       );
-      setStaffList(
-        res.data.map((staff) => ({
-          ...staff,
-          id: parseInt(staff._id), // Convert _id to a number and assign to id
-        })),
-      );
+      const staffData = res.data.map((staff) => ({
+        ...staff,
+        id: parseInt(staff._id), // Convert _id to a number and assign to id
+      }));
+      setStaffList(staffData);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to fetch staff");
       console.error(err);
@@ -119,77 +121,119 @@ const ManageTeachers = () => {
 
   useEffect(() => {
     fetchStaff();
-  }, [activeTab, selectedDepartment, searchQuery, fetchStaff]);
+  }, [fetchStaff]);
+
+  useEffect(() => {
+    let filteredList = staffList.filter((staff) => staff.type === activeTab);
+
+    if (selectedDepartment !== "All") {
+      filteredList = filteredList.filter(
+        (staff) => staff.department === selectedDepartment,
+      );
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filteredList = filteredList.filter((staff) => {
+        return (
+          staff.name.toLowerCase().includes(query) ||
+          staff.cnic.toLowerCase().includes(query) ||
+          staff.email.toLowerCase().includes(query) ||
+          staff.employeeNumber?.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    setFilteredStaffList(filteredList);
+  }, [staffList, activeTab, selectedDepartment, searchQuery]);
 
   const handleAddStaff = useCallback(
-    async (staffData: TeacherStaff) => {
-      setIsSubmitting(true);
-      setError(null);
+  async (staffData: TeacherStaff) => {
+    setIsSubmitting(true);
+    setIsAdding(true);
+    setError(null);
 
-      try {
-        const employeeNumber = generateEmployeeNumber(staffData.type);
-        const formData = new FormData();
+    try {
+      const employeeNumber = generateEmployeeNumber(staffData.type);
+      const formData = new FormData();
 
-        for (const key in staffData) {
-          if (key === "documents") {
-            if (staffData.documents) {
-              for (const docKey in staffData.documents) {
-                if (
-                  staffData.documents[docKey as keyof typeof staffData.documents]
-                ) {
-                  formData.append(
-                    docKey,
-                    staffData.documents[
-                      docKey as keyof typeof staffData.documents
-                    ] as unknown as File,
-                  );
-                }
+      for (const key in staffData) {
+        if (key === "documents") {
+          if (staffData.documents) {
+            for (const docKey in staffData.documents) {
+              if (
+                staffData.documents[
+                  docKey as keyof typeof staffData.documents
+                ]
+              ) {
+                formData.append(
+                  docKey,
+                  staffData.documents[
+                    docKey as keyof typeof staffData.documents
+                  ] as unknown as File,
+                );
               }
             }
-          } else {
-            formData.append(key, (staffData as any)[key]);
           }
-        }
-        formData.append("employeeNumber", employeeNumber);
-        formData.append("username", username);
-        formData.append("password", password);
-
-        const response = await axios.post(
-          "http://localhost:5000/api/staff",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          },
-        );
-
-        if (response.status === 200) {
-          const createdStaff: TeacherStaff = response.data as TeacherStaff;
-          setStaffList((prevList) => [...prevList, createdStaff]);
-          setNewStaff(JSON.parse(JSON.stringify(initialStaffState)));
-          setModalOpen(false);
-          setUsername("");
-          setPassword("");
         } else {
-          setError("Failed to add staff");
-          console.error("Failed to add staff:", response.statusText);
+          formData.append(key, (staffData as any)[key]);
         }
-      } catch (err: any) {
-        const apiError: ApiError = err.response?.data;
-
-        if (apiError.errors) {
-          setError(apiError.errors.map((e) => e.msg).join(", "));
-        } else {
-          setError(apiError.message || "Failed to add staff");
-        }
-        console.error(err);
-      } finally {
-        setIsSubmitting(false);
       }
-    },
-    [generateEmployeeNumber, initialStaffState, password, setModalOpen, setStaffList, setUsername, username],
-  );
+      formData.append("employeeNumber", employeeNumber);
+      formData.append("username", username);
+      formData.append("password", password);
+
+      // Log the FormData contents HERE
+      console.log("FormData contents:");
+      for (const pair of formData.entries()) {
+        console.log(pair[0] + ", " + pair[1]);
+      }
+
+      const response = await axios.post(
+        "http://localhost:5000/api/staff",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      if (response.status === 200) {
+        const createdStaff: TeacherStaff = response.data as TeacherStaff;
+        setStaffList((prevList) => [...prevList, createdStaff]);
+        setNewStaff(JSON.parse(JSON.stringify(initialStaffState)));
+        setModalOpen(false);
+        setUsername("");
+        setPassword("");
+      } else {
+        setError("Failed to add staff");
+        console.error("Failed to add staff:", response.statusText);
+      }
+    } catch (err: any) {
+      const apiError: ApiError = err.response?.data;
+
+      if (apiError.errors) {
+        setError(apiError.errors.map((e) => e.msg).join(", "));
+      } else {
+        setError(apiError.message || "Failed to add staff");
+      }
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+      setIsAdding(false);
+    }
+  },
+  [
+    generateEmployeeNumber,
+    initialStaffState,
+    password,
+    setModalOpen,
+    setStaffList,
+    setUsername,
+    username,
+  ]
+);
 
   const handleDeleteStaff = useCallback(
     async (id: string) => {
@@ -216,6 +260,7 @@ const ManageTeachers = () => {
   const handleUpdateStaff = useCallback(
     async (staffData: TeacherStaff) => {
       setIsSubmitting(true);
+      setIsAdding(false);
       setError(null);
 
       try {
@@ -270,6 +315,7 @@ const ManageTeachers = () => {
         console.error(err);
       } finally {
         setIsSubmitting(false);
+        setIsAdding(false);
       }
     },
     [fetchStaff, setEditModalOpen],
@@ -540,7 +586,11 @@ const ManageTeachers = () => {
 
   return (
     <div className="bg-[#29293d] p-6 rounded-lg shadow-md border border-gray-700">
-      {isSubmitting && <div style={loadingStyle}>Adding Staff...</div>}
+      {isSubmitting && (
+        <div style={loadingStyle}>
+          {isAdding ? "Adding Staff..." : "Updating Staff..."}
+        </div>
+      )}
 
       <h3 className="text-3xl font-semibold text-yellow-400 text-center mb-4">
         Manage School Staff
@@ -593,6 +643,12 @@ const ManageTeachers = () => {
         </select>
       </div>
 
+      {error && (
+        <div className="text-red-500 mb-4">
+          Error: {error}
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-gray-700">
           <thead>
@@ -610,8 +666,8 @@ const ManageTeachers = () => {
             </tr>
           </thead>
           <tbody>
-            {staffList.length > 0 ? (
-              staffList.map((staff) => (
+            {filteredStaffList.length > 0 ? (
+              filteredStaffList.map((staff) => (
                 <tr
                   key={staff._id}
                   className="border-b border-gray-700 hover:bg-gray-800"

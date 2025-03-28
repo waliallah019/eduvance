@@ -2,14 +2,8 @@ import { useState, useEffect } from "react";
 import { Course } from "../../interface/course.interface";
 import { Class, Section } from "../../interface/class.interface";
 import { TeacherStaff as Teacher } from "../../interface/TeacherStaff";
-
-// interface TeacherAssignment {
-//   _id: string;
-//   section: Section;
-//   teacher: Teacher; // Change to Teacher object
-//   course: Course;
-//   timeSlot: string;
-// }
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 
 
@@ -37,6 +31,8 @@ const ManageCourses = () => {
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   // Removed unused teacherAssignments state
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [sectionAssignments, setSectionAssignments] = useState<Record<string, string | undefined>>({});
+
 
 useEffect(() => {
   const fetchTeachers = async () => {
@@ -129,53 +125,56 @@ useEffect(() => {
       const courseToSave = { ...newCourse, classIds: selectedClassIds };
       try {
         let response;
+        let successMessage = "";
+  
         if (isEditing && editingCourseId) {
           response = await fetch(`http://localhost:5000/api/courses/${editingCourseId}`, {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(courseToSave),
           });
+          successMessage = "Course updated successfully!";
         } else {
           response = await fetch("http://localhost:5000/api/courses", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(courseToSave),
           });
+          successMessage = "Course added successfully!";
         }
-
-        if (!response.ok) {
-          throw new Error("Failed to save course");
-        }
-
+  
         const data = await response.json();
+  
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to save course");
+        }
+  
         if (isEditing) {
           setCourses(courses.map((course) => (course._id === editingCourseId ? data : course)));
         } else {
           setCourses([...courses, data]);
         }
-        setNewCourse({
-          _id: "",
-          name: "",
-          code: "",
-          instructors: [],
-          description: "",
-          classIds: [],
-          isActive: 1,
-        });
+  
+        // Reset form and close modal
+        setNewCourse({ _id: "", name: "", code: "", instructors: [], description: "", classIds: [], isActive: 1 });
         setSelectedClassIds([]);
         setModalOpen(false);
         setIsEditing(false);
         setEditingCourseId(null);
-      } catch (err) {
+  
+        // Show success toast
+        toast.success(successMessage, { autoClose: 3000 });
+      } catch (err: unknown) {
+          console.error("Failed to save course:", (err as Error).message);
+          toast.error(`${(err as Error).message}`, { autoClose: 5000 });
         console.error("Failed to save course:", err);
+        toast.error("An unexpected error occurred.", { autoClose: 5000 });
       }
+    } else {
+      toast.warn("Please fill in all fields before saving.", { autoClose: 3000 });
     }
   };
-
+  
   const handleEditCourse = (course: Course) => {
     setNewCourse(course);
     setSelectedClassIds(course.classIds);
@@ -183,23 +182,25 @@ useEffect(() => {
     setEditingCourseId(course._id);
     setModalOpen(true);
   };
+  
 
   const handleDeleteCourse = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/courses/${id}`, {
-        method: "DELETE",
-      });
-
+      const response = await fetch(`http://localhost:5000/api/courses/${id}`, { method: "DELETE" });
+      
       if (!response.ok) {
         throw new Error("Failed to delete course");
       }
-
+  
       setCourses(courses.filter((course) => course._id !== id));
-    } catch (err) {
+      toast.success("Course deleted successfully!", { autoClose: 3000 });
+  
+    } catch (err: unknown) {
       console.error("Failed to delete course:", err);
+      toast.error(`${(err as Error).message}`, { autoClose: 5000 });
     }
   };
-
+  
   const handleAssignTeachers = async (courseId: string, currentTeachers: string[]) => {
     setSelectedCourseId(courseId);
     setSelectedTeachers(currentTeachers);
@@ -210,17 +211,17 @@ useEffect(() => {
     setAssignModalOpen(true);
   };
 
-  const toggleTeacherSelection = (teacherId: string) => {
-    setSelectedTeachers((prev) =>
-      prev.includes(teacherId) ? prev.filter((id) => id !== teacherId) : [...prev, teacherId]
-    );
-  };
+  // const toggleTeacherSelection = (teacherId: string) => {
+  //   setSelectedTeachers((prev) =>
+  //     prev.includes(teacherId) ? prev.filter((id) => id !== teacherId) : [...prev, teacherId]
+  //   );
+  // };
 
-  const toggleSectionSelection = (sectionId: string) => {
-    setSelectedSections((prev) =>
-      prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId]
-    );
-  };
+  // const toggleSectionSelection = (sectionId: string) => {
+  //   setSelectedSections((prev) =>
+  //     prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId]
+  //   );
+  // };
 
   const toggleClassSelection = (classId: string) => {
     setSelectedClassIds((prev) =>
@@ -228,84 +229,108 @@ useEffect(() => {
     );
   };
 
-  const handleSaveTeacherAssignments = async () => {
-    if (selectedCourseId !== null && selectedTeachers.length > 0 && selectedSections.length > 0) {
-      const course = courses.find((course) => course._id === selectedCourseId);
   
-      if (course) {
-        // Step 1: Save teacher assignments
-        const assignments = selectedSections.map((sectionId) => {
-          const section = sections.find((section) => section._id === sectionId);
+  const handleSaveTeacherAssignments = async () => {
+    try {
+      // Filter out sections with no teacher assigned and create valid assignments
+      const validAssignments = Object.entries(sectionAssignments)
+        .filter(([sectionId, teacherId]) => teacherId)
+        .map(([sectionId, teacherId]) => {
+          const section = sections.find(s => s._id === sectionId);
+          if (!section) throw new Error(`Section ${sectionId} not found`);
+          
           return {
-            section: section?._id, // Send section ID
-            teacher: selectedTeachers[0], // Send teacher ID
-            course: course._id, // Send course ID
-            timeSlot: "None", // Default time slot
+            section: sectionId,
+            teacher: teacherId,
+            course: selectedCourseId,
+            timeSlot: "None",
+            className: classes.find(c => c._id === section.classID)?.className || "Unknown Class",
+            sectionName: section.sectionName
           };
         });
   
-        try {
-          // Save teacher assignments
-          const assignmentResponse = await fetch("http://localhost:5000/api/teacher-assignments", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(assignments),
-          });
-  
-          if (!assignmentResponse.ok) {
-            throw new Error("Failed to save teacher assignments");
-          }
-  
-          // Step 2: Update the course's instructors with the assigned teachers' names
-          const assignedTeachers = selectedTeachers.map((teacherId) => {
-            const teacher = teachers.find((t) => t._id === teacherId);
-            return teacher?.name || "Unknown Teacher";
-          });
-  
-          const updatedCourse = {
-            ...course,
-            instructors: assignedTeachers, // Update the instructors array with teacher names
-          };
-  
-          // Step 3: Save the updated course to the backend
-          const courseResponse = await fetch(`http://localhost:5000/api/courses/${selectedCourseId}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updatedCourse),
-          });
-  
-          if (!courseResponse.ok) {
-            throw new Error("Failed to update course with assigned teachers");
-          }
-  
-          // Step 4: Update the state with the new course data
-          const updatedCourseData = await courseResponse.json();
-          setCourses((prevCourses) =>
-            prevCourses.map((c) => (c._id === selectedCourseId ? updatedCourseData : c))
-          );
-  
-          // Step 5: Reset modal and selections
-          setAssignModalOpen(false);
-          setSelectedSections([]);
-          setSelectedTeachers([]);
-          alert("Teacher successfully assigned to sections and course updated!");
-        } catch (err) {
-          console.error("Failed to save teacher assignments or update course:", err);
-        }
+      if (validAssignments.length === 0) {
+        throw new Error("No valid assignments to save. Please assign teachers to sections.");
       }
-    } else {
-      alert("Please select at least one section and one teacher.");
+  
+      // Step 1: Save teacher assignments
+      const assignmentResponse = await fetch("http://localhost:5000/api/teacher-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validAssignments),
+      });
+  
+      if (!assignmentResponse.ok) throw new Error("Failed to save teacher assignments");
+  
+      // Step 2: Update course instructors with all unique assigned teachers
+      const assignedTeacherIds = [...new Set(validAssignments.map(a => a.teacher))];
+      const assignedTeachers = assignedTeacherIds.map(teacherId => {
+        const teacher = teachers.find(t => t._id === teacherId);
+        return teacher?.name || "Unknown Teacher";
+      });
+  
+      const course = courses.find(c => c._id === selectedCourseId);
+      if (!course) throw new Error("Course not found");
+      
+      const updatedCourse = { 
+        ...course, 
+        instructors: assignedTeachers,
+        assignedSections: validAssignments.map(a => ({
+          sectionId: a.section,
+          sectionName: a.sectionName,
+          className: a.className
+        }))
+      };
+  
+      // Step 3: Save updated course
+      const courseResponse = await fetch(`http://localhost:5000/api/courses/${selectedCourseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedCourse),
+      });
+  
+      if (!courseResponse.ok) throw new Error("Failed to update course with assigned teachers");
+  
+      // Step 4: Update state
+      const updatedCourseData = await courseResponse.json();
+      setCourses(prevCourses =>
+        prevCourses.map(c => (c._id === selectedCourseId ? updatedCourseData : c))
+      );
+  
+      // Step 5: Reset modal and selections
+      setAssignModalOpen(false);
+      setSectionAssignments({});
+      toast.success("Teachers assigned successfully!", { autoClose: 2000 });
+  
+    } catch (err) {
+      toast.error(` ${(err as Error).message}`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "colored",
+      });
+  
+      console.error("Error:", err);
     }
   };
+// Handler for assigning teachers to sections
+const handleTeacherAssignment = (sectionId : string, teacherId: string) => {
+  setSectionAssignments(prev => ({
+    ...prev,
+    [sectionId]: teacherId || undefined // Store undefined if teacherId is empty
+  }));
+};
+
 
   return (
+
     <div className="bg-[#29293d] p-6 rounded-lg shadow-md border border-gray-700">
       <h3 className="text-2xl font-semibold text-yellow-400 mb-4">Manage Courses</h3>
-
+      {/* Your App Content */}
+      <ToastContainer />
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
           type="text"
@@ -465,45 +490,38 @@ useEffect(() => {
 
 {assignModalOpen && (
   <div className="fixed inset-0 flex items-center justify-center bg-transparent backdrop-blur-md">
-    <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96">
-      <h2 className="text-yellow-400 text-xl mb-4">Assign Teachers and Sections</h2>
+    <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96 max-h-[80vh] overflow-y-auto">
+      <h2 className="text-yellow-400 text-xl mb-4">Assign Teachers to Sections</h2>
 
-      <div className="mb-4">
-        <label className="text-white">Select Sections:</label>
-        <div className="flex flex-col gap-2 mt-2">
-          {sections.map((section) => (
-            <label key={section._id} className="flex items-center gap-2 text-white">
-              <input
-                type="checkbox"
-                checked={selectedSections.includes(section._id)}
-                onChange={() => toggleSectionSelection(section._id)}
-                className="form-checkbox text-yellow-400"
-              />
-              {/* Display class name and section name together */}
+      {/* SECTION-TEACHER ASSIGNMENT */}
+      <div className="space-y-4">
+        {sections.map((section) => (
+          <div key={section._id} className="border-b border-gray-700 pb-4 last:border-0">
+            <div className="text-white font-medium mb-2">
               {`${classes.find((cls) => cls._id === section.classID)?.className || "Unknown Class"} - Section ${section.sectionName}`}
-            </label>
-          ))}
-        </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-gray-300 text-sm">Assign Teacher:</label>
+              <select
+                value={sectionAssignments[section._id] || ""}
+                onChange={(e) => handleTeacherAssignment(section._id, e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-white"
+              >
+                <option value="">Select Teacher</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher._id} value={teacher._id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="mb-4">
-  <label className="text-white">Select Teachers:</label>
-  <div className="flex flex-col gap-2 mt-2">
-    {teachers.map((teacher) => (
-      <label key={teacher._id} className="flex items-center gap-2 text-white">
-        <input
-          type="checkbox"
-          checked={selectedTeachers.includes(teacher._id)}
-          onChange={() => toggleTeacherSelection(teacher._id)}
-          className="form-checkbox text-yellow-400"
-        />
-        {teacher.name}
-      </label>
-    ))}
-  </div>
-</div>
-
-      <div className="flex justify-end gap-3 mt-4">
+      {/* ACTION BUTTONS */}
+      <div className="flex justify-end gap-3 mt-6">
         <button
           className="text-gray-400 hover:underline"
           onClick={() => setAssignModalOpen(false)}
@@ -513,8 +531,9 @@ useEffect(() => {
         <button
           onClick={handleSaveTeacherAssignments}
           className="bg-yellow-400 text-black px-4 py-2 rounded-md"
+          disabled={Object.keys(sectionAssignments).length === 0} // Disable if no assignments made
         >
-          Save
+          Save Assignments
         </button>
       </div>
     </div>

@@ -11,6 +11,7 @@ const staffRoutes = require('./routes/staffRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const classRoutes = require('./routes/classRoutes');
 const sectionRoutes = require('./routes/sectionRoutes');
+const studentRoutes = require('./routes/ManageStudent');
 const teacherAssignmentRoutes = require('./routes/CourseAssignmentRoutes');
 
 
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/courses", courseRoutes);
+app.use("/api/students", studentRoutes);
 app.use("/api/classes", classRoutes);
 app.use("/api", sectionRoutes);
 app.use("/api", teacherAssignmentRoutes);

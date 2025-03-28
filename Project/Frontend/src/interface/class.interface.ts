@@ -10,6 +10,7 @@ export interface Class {
   
 export interface Section {
     _id: string;
+    classId: string;
     sectionName: string;
     classID: string;
   }

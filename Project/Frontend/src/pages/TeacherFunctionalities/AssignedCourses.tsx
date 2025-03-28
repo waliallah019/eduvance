@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Book, Clock } from "lucide-react";
+import { Calendar, Users, Book, Clock } from "lucide-react";
 
 interface Course {
   name: string;

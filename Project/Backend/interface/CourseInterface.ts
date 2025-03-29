@@ -3,6 +3,7 @@ export interface Course {
   name: string;
   code: string;
   description: string;
+  classIds: string[];
   instructors: string[];
   isActive: number;
 }

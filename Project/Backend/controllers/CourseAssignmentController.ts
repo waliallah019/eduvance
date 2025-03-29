@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
-import CourseAssignment from "../models/CourseAssignment"; // Adjust the path based on your project structure
+import CourseAssignment from "../models/CourseAssignment";
+import Section from "../models/Section";
+import Class from "../models/Class";
+import Teacher from "../models/Staff";
+import Course from "../models/Course";
+import ICourseAssignment from "../interface/courseAssignment.interface";
 
 export const saveTeacherAssignments = async (req: Request, res: Response): Promise<void> => {
   try {
     const assignments = req.body;
-    console.log("Assignments:", assignments);
-
     // Validate that all teacher IDs are valid ObjectIds
     for (const assignment of assignments) {
       if (!mongoose.Types.ObjectId.isValid(assignment.teacher)) {
@@ -50,10 +53,29 @@ export const saveTeacherAssignments = async (req: Request, res: Response): Promi
 // Fetch teacher assignments for a course
 export const getTeacherAssignmentsByCourse = async (req: Request, res: Response) => {
   try {
-    const { course } = req.query;
-    const assignments = await CourseAssignment.find({ course }).populate("section").populate("teacher");
+    const { courseId } = req.params;
+    if (!courseId)
+    {
+      res.status(400).json({ message: "Course ID is required" });
+    }
+    const assignments = await CourseAssignment.find({ course: courseId }).lean() as ICourseAssignment[];
+    if (assignments)
+    {
+      for (const assignment of assignments) {
+        const section = await Section.findById(assignment.section);
+        const classData = await Class.findById(section?.classID);
+        const teacher = await Teacher.findById(assignment.teacher);
+        const course = await Course.findById(assignment.course);
+        assignment.sectionName = section?.sectionName;
+        assignment.className = classData?.className;
+        assignment.teacherName = teacher?.name;
+        assignment.courseName = course?.name;
+      }
+    }
+
     res.status(200).json(assignments);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch teacher assignments", error: err });
+    console.log(err);
   }
 };

@@ -1,28 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import { IUser } from "../interface/user.interface";
-
-// Student Interface
-interface IStudent extends Document {
-  firstName: string;
-  lastName: string;
-  fatherName: string;
-  motherName: string;
-  fatherCNIC: string;
-  bFormNumberCNIC: string;
-  dob: string;
-  guardianContactNumber: string;
-  guardianEmail?: string;
-  ClassName: string;
-  classId: mongoose.Schema.Types.ObjectId; // ADD THIS LINE
-  section?: string;
-  address: string;
-  gender: "Male" | "Female" | "Other";
-  rollNumber?: string;
-  characterCertificate?: string;
-  leavingCertificate?: string;
-  isActive: number;
-  userId: mongoose.Types.ObjectId;
-}
+import IStudent from "../interface/student.interface";
 
 const StudentSchema: Schema<IStudent> = new Schema(
   {

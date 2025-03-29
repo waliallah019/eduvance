@@ -4,7 +4,7 @@ import { saveTeacherAssignments, getTeacherAssignmentsByCourse } from "../contro
 const router = express.Router();
 
 router.post("/teacher-assignments", saveTeacherAssignments);
-router.get("/teacher-assignments", getTeacherAssignmentsByCourse);
+router.get("/teacher-assignments/:courseId", getTeacherAssignmentsByCourse);
 
 
 module.exports = router;

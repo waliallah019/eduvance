@@ -4,6 +4,7 @@ import { Class, Section } from "../../interface/class.interface";
 import { TeacherStaff as Teacher } from "../../interface/TeacherStaff";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {ICourseAssignment} from "../../interface/courseAssignment.interface";
 
 
 
@@ -28,23 +29,18 @@ const ManageCourses = () => {
   const [assignModalOpen, setAssignModalOpen] = useState<boolean>(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
+  // const [selectedSections, setSelectedSections] = useState<string[]>([]);
   // Removed unused teacherAssignments state
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [sectionAssignments, setSectionAssignments] = useState<Record<string, string | undefined>>({});
 
   // Add to your state declarations
 const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
-interface AssignmentDetail {
-  _id: string;
-  section: string;
-  teacher: string;
-  course: string;
-  timeSlot?: string;
-}
 
-const [assignmentDetails, setAssignmentDetails] = useState<AssignmentDetail[]>([]); // Use a proper interface for assignments
 
+const [assignmentDetails, setAssignmentDetails] = useState<ICourseAssignment[]>([]); // Use a proper interface for assignments
+
+const [loading, setLoading] = useState<boolean>(false);
 
 
 useEffect(() => {
@@ -340,18 +336,27 @@ const handleTeacherAssignment = (sectionId : string, teacherId: string) => {
 
 // Add this handler function
 const handleViewAssignments = async (courseId: string) => {
+  setLoading(true); // Start loading
   try {
     const response = await fetch(`http://localhost:5000/api/teacher-assignments/${courseId}`);
-    fetchSections(courses.find(course => course._id === courseId)?.classIds || []);
     if (!response.ok) {
       throw new Error("Failed to fetch assignment details");
     }
-    const data = await response.json();
-    setAssignmentDetails(data);
-    setAssignmentModalOpen(true);
+    
+    const data: ICourseAssignment[] = await response.json(); // Expecting an array
+
+    if (data.length > 0) {
+      setAssignmentDetails(data);
+      setAssignmentModalOpen(true);
+    } else {
+      console.warn("No assignments found for this course.");
+      toast.info("No assignments found", { autoClose: 3000 });
+    }
   } catch (err) {
     console.error("Error fetching assignments:", err);
     toast.error("Failed to load assignment details", { autoClose: 3000 });
+  } finally {
+    setLoading(false); // Stop loading
   }
 };
 
@@ -421,11 +426,13 @@ return (
                     Assign
                   </button>
                   <button
-                    className="text-blue-400 hover:underline"
+                    className={`text-blue-400 hover:underline ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() => handleViewAssignments(course._id)}
+                    disabled={loading}
                   >
-                    View
+                    {loading ? "Loading..." : "View"}
                   </button>
+
                 </td>
               </tr>
             ))
@@ -468,22 +475,27 @@ return (
       <div className="fixed inset-0 flex items-center justify-center bg-transparent backdrop-blur-md">
         <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96 max-h-[80vh] overflow-y-auto">
           <h2 className="text-yellow-400 text-xl mb-4">Assignment Details</h2>
-          
-          {assignmentDetails.length > 0 ? (
+
+          {loading ? (
+            <div className="flex justify-center items-center py-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+              <span className="text-gray-400 ml-2">Loading...</span>
+            </div>
+          ) : assignmentDetails.length > 0 ? (
             <div className="space-y-4">
               {assignmentDetails.map((assignment) => {
-                const section = sections.find(s => s._id === assignment.section);
-                const teacher = teachers.find(t => t._id === assignment.teacher);
-                const classInfo = classes.find(c => c._id === section?.classID);
-                
+                const sectionName = assignment.sectionName;
+                const teacherName = assignment.teacherName;
+                const className = assignment.className;
+
                 return (
                   <div key={assignment._id} className="border-b border-gray-700 pb-4 last:border-0">
                     <div className="text-white">
-                      <span className="font-medium">{classInfo?.className || "Unknown Class"}</span>
-                      <span> - Section {section?.sectionName || "Unknown"}</span>
+                      <span className="font-medium">{className || "Unknown Class"}</span>
+                      <span> - Section {sectionName || "Unknown"}</span>
                     </div>
                     <div className="text-yellow-400 mt-1">
-                      Teacher: {teacher?.name || "Unknown Teacher"}
+                      Teacher: {teacherName || "Unknown Teacher"}
                     </div>
                     {assignment.timeSlot && assignment.timeSlot !== "None" && (
                       <div className="text-gray-300 text-sm mt-1">
@@ -499,10 +511,7 @@ return (
           )}
 
           <div className="flex justify-end mt-6">
-            <button
-              className="text-gray-400 hover:underline"
-              onClick={() => setAssignmentModalOpen(false)}
-            >
+            <button className="text-gray-400 hover:underline" onClick={() => setAssignmentModalOpen(false)}>
               Close
             </button>
           </div>

@@ -91,6 +91,7 @@ export const updateClass = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Update class details
     const updatedClass = await ClassModel.findByIdAndUpdate(
       id,
       { className, session },
@@ -102,19 +103,39 @@ export const updateClass = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Delete existing sections and add new ones
-    await SectionModel.deleteMany({ classID: id });
-    const sectionDocs = sections.map((sectionName: string) => ({
-      classID: id,
-      sectionName,
-      strengthBoys: 0,
-      strengthGirls: 0,
-    }));
-    await SectionModel.insertMany(sectionDocs);
+    // Fetch existing sections for the class
+    const existingSections = await SectionModel.find({ classID: id });
 
-    res.json({ message: "Class updated successfully", class: updatedClass });
+    // Process each section in the request
+    const updatedSections = await Promise.all(
+      sections.map(async (sectionName: string) => {
+        const existingSection = existingSections.find((s) => s.sectionName === sectionName);
+        if (existingSection) {
+          // If section exists, update it
+          return SectionModel.findByIdAndUpdate(existingSection._id, { sectionName }, { new: true });
+        } else {
+          // If section does not exist, create a new one
+          return SectionModel.create({
+            classID: id,
+            sectionName,
+            strengthBoys: 0,
+            strengthGirls: 0,
+          });
+        }
+      })
+    );
+
+    // Remove sections that are no longer in the updated list
+    const sectionNames = sections.map((s: string) => s);
+    await SectionModel.deleteMany({ classID: id, sectionName: { $nin: sectionNames } });
+
+    res.json({
+      message: "Class updated successfully",
+      class: updatedClass,
+      sections: updatedSections,
+    });
+
   } catch (error) {
     res.status(500).json({ message: "Error updating class", error });
   }
 };
-

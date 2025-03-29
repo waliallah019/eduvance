@@ -1,14 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
-import Teacher from "./Staff";
-import Section from "./Section";
-import Course from "./Course";
 
-interface ICourseAssignment extends Document {
-  section: mongoose.Schema.Types.ObjectId | typeof Section;
-  teacher: mongoose.Schema.Types.ObjectId | typeof Teacher; // Reference to Teacher
-  course: mongoose.Schema.Types.ObjectId | typeof Course;
-  timeSlot: string;
-}
+import ICourseAssignment from "../interface/courseAssignment.interface";
 
 const CourseAssignmentSchema = new Schema<ICourseAssignment>({
   section: { type: Schema.Types.ObjectId, ref: "Section", required: true },

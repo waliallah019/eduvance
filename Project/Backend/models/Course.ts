@@ -1,15 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { Course } from "../interface/CourseInterface";
 
-interface ICourse extends Document {
-  name: string;
-  code: string;
-  description: string;
-  instructors: string[];
-  classIds: string[]; // Add this field
-  isActive: number;
-}
-
-const CourseSchema = new Schema<ICourse>(
+const CourseSchema = new Schema<Course>(
   {
     name: { type: String, required: true },
     code: { type: String, required: true, unique: true },
@@ -21,4 +13,4 @@ const CourseSchema = new Schema<ICourse>(
   { timestamps: true }
 );
 
-export default mongoose.model<ICourse>("Course", CourseSchema);
+export default mongoose.model<Course>("Course", CourseSchema);

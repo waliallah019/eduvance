@@ -149,7 +149,7 @@ const ManageStudents = () => {
               classIds: [newStudent.classId], // Ensure this is an array
             },
           );
-          setSections(response.data);
+          setSections(response.data as Section[]);
         } catch (error: any) {
           console.error("Error fetching sections:", error);
           setError(

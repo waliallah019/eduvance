@@ -1,12 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
-
-interface IClass extends Document {
-  className: string;
-  session: string;
-  timetable?: string | null;
-  highScorers?: string | null;
-  isActive: number;
-}
+import IClass from "../interface/class.interface";
 
 const ClassSchema = new Schema<IClass>({
   className: { type: String, required: true },

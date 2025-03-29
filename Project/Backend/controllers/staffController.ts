@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import Staff, { IStaff } from "../models/Staff";
+import Staff from "../models/Staff";
+import IStaff  from "../interface/staff.interface";
 import User from "../models/User"; // Import the User model
 import { v2 as cloudinary } from "cloudinary";
 import { validationResult } from "express-validator";
@@ -147,7 +148,7 @@ const createStaff = async (req: Request, res: Response): Promise<void> => {
       throw new Error("User ID is undefined");
     }
 
-    const newStaff: IStaff = new Staff({
+    const newStaff = new Staff({
       name,
       cnic,
       dob,

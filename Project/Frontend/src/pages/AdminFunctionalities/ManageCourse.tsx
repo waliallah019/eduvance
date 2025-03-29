@@ -33,6 +33,19 @@ const ManageCourses = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [sectionAssignments, setSectionAssignments] = useState<Record<string, string | undefined>>({});
 
+  // Add to your state declarations
+const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+interface AssignmentDetail {
+  _id: string;
+  section: string;
+  teacher: string;
+  course: string;
+  timeSlot?: string;
+}
+
+const [assignmentDetails, setAssignmentDetails] = useState<AssignmentDetail[]>([]); // Use a proper interface for assignments
+
+
 
 useEffect(() => {
   const fetchTeachers = async () => {
@@ -77,6 +90,7 @@ useEffect(() => {
         }
         const data = await response.json();
         setClasses(data);
+        
       } catch (err) {
         console.error("Failed to fetch classes:", err);
       }
@@ -313,7 +327,6 @@ useEffect(() => {
         theme: "colored",
       });
   
-      console.error("Error:", err);
     }
   };
 // Handler for assigning teachers to sections
@@ -325,107 +338,177 @@ const handleTeacherAssignment = (sectionId : string, teacherId: string) => {
 };
 
 
-  return (
+// Add this handler function
+const handleViewAssignments = async (courseId: string) => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/teacher-assignments/${courseId}`);
+    fetchSections(courses.find(course => course._id === courseId)?.classIds || []);
+    if (!response.ok) {
+      throw new Error("Failed to fetch assignment details");
+    }
+    const data = await response.json();
+    setAssignmentDetails(data);
+    setAssignmentModalOpen(true);
+  } catch (err) {
+    console.error("Error fetching assignments:", err);
+    toast.error("Failed to load assignment details", { autoClose: 3000 });
+  }
+};
 
-    <div className="bg-[#29293d] p-6 rounded-lg shadow-md border border-gray-700">
-      <h3 className="text-2xl font-semibold text-yellow-400 mb-4">Manage Courses</h3>
-      {/* Your App Content */}
-      <ToastContainer />
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Search by name or code"
-          className="bg-gray-800 border border-gray-600 text-white p-2 rounded-md focus:ring-2 focus:ring-yellow-400 outline-none"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-700">
-          <thead>
-            <tr className="bg-gray-800 text-gray-300 text-left">
-              <th className="p-3 border border-gray-700">CourseCode</th>
-              <th className="p-3 border border-gray-700">CourseName</th>
-              <th className="p-3 border border-gray-700">Assigned Teachers</th>
-              <th className="p-3 border border-gray-700">Course Description</th>
-              <th className="p-3 border border-gray-700">Assigned Classes</th>
-              <th className="p-3 border border-gray-700 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCourses.length > 0 ? (
-              filteredCourses.map((course) => (
-                <tr key={course._id} className="border-b border-gray-700 hover:bg-gray-800">
-                  <td className="p-3">{course.code}</td>
-                  <td className="p-3">{course.name}</td>
-                  <td className="p-3">
-                    {course.instructors.length > 0 ? course.instructors.join(", ") : "No teacher assigned"}
-                  </td>
-                  <td className="p-3">{course.description}</td>
-                  <td className="p-3">
-                    {course.classIds.length > 0
-                      ? course.classIds
-                          .map(
-                            (classId) => classes.find((cls) => cls._id === classId)?.className
-                          )
-                          .join(", ")
-                      : "No classes assigned"}
-                  </td>
-                  <td className="p-3 flex justify-center gap-3">
-                    <button
-                      className="text-yellow-400 hover:underline"
-                      onClick={() => handleEditCourse(course)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-red-400 hover:underline"
-                      onClick={() => handleDeleteCourse(course._id)}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      className="text-emerald-400 hover:underline"
-                      onClick={() => handleAssignTeachers(course._id, course.instructors)}
-                    >
-                      Assign Teacher
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className="text-center p-4 text-gray-400">
-                  No courses found
+return (
+  <div className="bg-[#29293d] p-6 rounded-lg shadow-md border border-gray-700">
+    <h3 className="text-2xl font-semibold text-yellow-400 mb-4">Manage Courses</h3>
+    <ToastContainer />
+    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <input
+        type="text"
+        placeholder="Search by name or code"
+        className="bg-gray-800 border border-gray-600 text-white p-2 rounded-md focus:ring-2 focus:ring-yellow-400 outline-none"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse border border-gray-700">
+        <thead>
+          <tr className="bg-gray-800 text-gray-300 text-left">
+            <th className="p-3 border border-gray-700">CourseCode</th>
+            <th className="p-3 border border-gray-700">CourseName</th>
+            <th className="p-3 border border-gray-700">Assigned Teachers</th>
+            <th className="p-3 border border-gray-700">Course Description</th>
+            <th className="p-3 border border-gray-700">Assigned Classes</th>
+            <th className="p-3 border border-gray-700 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredCourses.length > 0 ? (
+            filteredCourses.map((course) => (
+              <tr key={course._id} className="border-b border-gray-700 hover:bg-gray-800">
+                <td className="p-3">{course.code}</td>
+                <td className="p-3">{course.name}</td>
+                <td className="p-3">
+                  {course.instructors.length > 0 ? course.instructors.join(", ") : "No teacher assigned"}
+                </td>
+                <td className="p-3">{course.description}</td>
+                <td className="p-3">
+                  {course.classIds.length > 0
+                    ? course.classIds
+                        .map(
+                          (classId) => classes.find((cls) => cls._id === classId)?.className
+                        )
+                        .join(", ")
+                    : "No classes assigned"}
+                </td>
+                <td className="p-3 flex justify-center gap-3">
+                  <button
+                    className="text-yellow-400 hover:underline"
+                    onClick={() => handleEditCourse(course)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="text-red-400 hover:underline"
+                    onClick={() => handleDeleteCourse(course._id)}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    className="text-emerald-400 hover:underline"
+                    onClick={() => handleAssignTeachers(course._id, course.instructors)}
+                  >
+                    Assign
+                  </button>
+                  <button
+                    className="text-blue-400 hover:underline"
+                    onClick={() => handleViewAssignments(course._id)}
+                  >
+                    View
+                  </button>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={6} className="text-center p-4 text-gray-400">
+                No courses found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
 
-      <div className="mt-6">
-        <button
-          onClick={() => {
-            setNewCourse({
-              _id: "",
-              name: "",
-              code: "",
-              instructors: [],
-              description: "",
-              classIds: [],
-              isActive: 1,
-            });
-            setSelectedClassIds([]);
-            setIsEditing(false);
-            setModalOpen(true);
-          }}
-          className="bg-yellow-400 text-black px-5 py-2 rounded-md text-lg font-medium"
-        >
-          + Add Course
-        </button>
+    {/* Add Course button remains the same */}
+    <div className="mt-6">
+      <button
+        onClick={() => {
+          setNewCourse({
+            _id: "",
+            name: "",
+            code: "",
+            instructors: [],
+            description: "",
+            classIds: [],
+            isActive: 1,
+          });
+          setSelectedClassIds([]);
+          setIsEditing(false);
+          setModalOpen(true);
+        }}
+        className="bg-yellow-400 text-black px-5 py-2 rounded-md text-lg font-medium"
+      >
+        + Add Course
+      </button>
+    </div>
+
+    {/* Assignment Details Modal */}
+    {assignmentModalOpen && (
+      <div className="fixed inset-0 flex items-center justify-center bg-transparent backdrop-blur-md">
+        <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96 max-h-[80vh] overflow-y-auto">
+          <h2 className="text-yellow-400 text-xl mb-4">Assignment Details</h2>
+          
+          {assignmentDetails.length > 0 ? (
+            <div className="space-y-4">
+              {assignmentDetails.map((assignment) => {
+                const section = sections.find(s => s._id === assignment.section);
+                const teacher = teachers.find(t => t._id === assignment.teacher);
+                const classInfo = classes.find(c => c._id === section?.classID);
+                
+                return (
+                  <div key={assignment._id} className="border-b border-gray-700 pb-4 last:border-0">
+                    <div className="text-white">
+                      <span className="font-medium">{classInfo?.className || "Unknown Class"}</span>
+                      <span> - Section {section?.sectionName || "Unknown"}</span>
+                    </div>
+                    <div className="text-yellow-400 mt-1">
+                      Teacher: {teacher?.name || "Unknown Teacher"}
+                    </div>
+                    {assignment.timeSlot && assignment.timeSlot !== "None" && (
+                      <div className="text-gray-300 text-sm mt-1">
+                        Time Slot: {assignment.timeSlot}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-center py-4">No assignment details found</div>
+          )}
+
+          <div className="flex justify-end mt-6">
+            <button
+              className="text-gray-400 hover:underline"
+              onClick={() => setAssignmentModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
+    )}
 
       {modalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-transparent backdrop-blur-md">

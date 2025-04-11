@@ -6,6 +6,7 @@ export interface Course {
     instructors: string[];
     classIds: string[];
     isActive: number;
+    unassignedSectionNames?: string[];
   }
 
 

@@ -5,6 +5,7 @@ import { TeacherStaff as Teacher } from "../../interface/TeacherStaff";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {ICourseAssignment} from "../../interface/courseAssignment.interface";
+import TableLoadingSpinner from "../../components/ui/TableLoadingSpinner";
 
 
 
@@ -28,9 +29,8 @@ const ManageCourses = () => {
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [assignModalOpen, setAssignModalOpen] = useState<boolean>(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
-  // const [selectedSections, setSelectedSections] = useState<string[]>([]);
-  // Removed unused teacherAssignments state
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [sectionAssignments, setSectionAssignments] = useState<Record<string, string | undefined>>({});
 
@@ -39,7 +39,7 @@ const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
 
 
 const [assignmentDetails, setAssignmentDetails] = useState<ICourseAssignment[]>([]); // Use a proper interface for assignments
-
+const [tableLoaing, setTableLoading] = useState(false);
 const [loading, setLoading] = useState<boolean>(false);
 
 
@@ -60,24 +60,35 @@ useEffect(() => {
   fetchTeachers();
 }, []);
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await fetch("http://localhost:5000/api/courses");
-        if (!response.ok) {
-          throw new Error("Failed to fetch courses");
-        }
-        const data = await response.json();
-        setCourses(data.filter((course: Course) => course.isActive === 1));
-      } catch (err) {
-        console.error("Failed to fetch courses:", err);
+useEffect(() => {
+  const fetchCourses = async () => {
+    try {
+      setTableLoading(true); // Start loading
+      const response = await fetch("http://localhost:5000/api/courses");
+      if (!response.ok) {
+        throw new Error("Failed to fetch courses");
       }
-    };
 
-    fetchCourses();
-  }, []);
+      const data: { course: Course; unassignedSectionNames: string[] }[] = await response.json();
+      const activeCourses = data
+        .filter(entry => entry.course.isActive === 1)
+        .map(entry => ({
+          ...entry.course,
+          unassignedSectionNames: entry.unassignedSectionNames,
+        }));
 
-  useEffect(() => {
+      setCourses(activeCourses);
+    } catch (err) {
+      console.error("Failed to fetch courses:", err);
+    } finally {
+      setTableLoading(false); // Stop loading regardless of success/failure
+    }
+  };
+
+  fetchCourses();
+}, []);
+
+useEffect(() => {
     const fetchClasses = async () => {
       try {
         const response = await fetch("http://localhost:5000/api/classes");
@@ -221,18 +232,6 @@ useEffect(() => {
     setAssignModalOpen(true);
   };
 
-  // const toggleTeacherSelection = (teacherId: string) => {
-  //   setSelectedTeachers((prev) =>
-  //     prev.includes(teacherId) ? prev.filter((id) => id !== teacherId) : [...prev, teacherId]
-  //   );
-  // };
-
-  // const toggleSectionSelection = (sectionId: string) => {
-  //   setSelectedSections((prev) =>
-  //     prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId]
-  //   );
-  // };
-
   const toggleClassSelection = (classId: string) => {
     setSelectedClassIds((prev) =>
       prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId]
@@ -244,7 +243,7 @@ useEffect(() => {
     try {
       // Filter out sections with no teacher assigned and create valid assignments
       const validAssignments = Object.entries(sectionAssignments)
-        .filter(([sectionId, teacherId]) => teacherId)
+        .filter(([teacherId]) => teacherId)
         .map(([sectionId, teacherId]) => {
           const section = sections.find(s => s._id === sectionId);
           if (!section) throw new Error(`Section ${sectionId} not found`);
@@ -364,7 +363,7 @@ const handleViewAssignments = async (courseId: string) => {
 return (
   <div className="bg-[#29293d] p-6 rounded-lg shadow-md border border-gray-700">
     <h3 className="text-2xl font-semibold text-yellow-400 mb-4">Manage Courses</h3>
-    <ToastContainer />
+    <ToastContainer  theme="dark"/>
     <div className="flex flex-col sm:flex-row gap-4 mb-6">
       <input
         type="text"
@@ -381,69 +380,76 @@ return (
           <tr className="bg-gray-800 text-gray-300 text-left">
             <th className="p-3 border border-gray-700">CourseCode</th>
             <th className="p-3 border border-gray-700">CourseName</th>
-            <th className="p-3 border border-gray-700">Assigned Teachers</th>
             <th className="p-3 border border-gray-700">Course Description</th>
             <th className="p-3 border border-gray-700">Assigned Classes</th>
+            <th className="p-3 border border-gray-700">Unassigned Sections</th>
             <th className="p-3 border border-gray-700 text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filteredCourses.length > 0 ? (
-            filteredCourses.map((course) => (
-              <tr key={course._id} className="border-b border-gray-700 hover:bg-gray-800">
-                <td className="p-3">{course.code}</td>
-                <td className="p-3">{course.name}</td>
-                <td className="p-3">
-                  {course.instructors.length > 0 ? course.instructors.join(", ") : "No teacher assigned"}
-                </td>
-                <td className="p-3">{course.description}</td>
-                <td className="p-3">
-                  {course.classIds.length > 0
-                    ? course.classIds
-                        .map(
-                          (classId) => classes.find((cls) => cls._id === classId)?.className
-                        )
-                        .join(", ")
-                    : "No classes assigned"}
-                </td>
-                <td className="p-3 flex justify-center gap-3">
-                  <button
-                    className="text-yellow-400 hover:underline"
-                    onClick={() => handleEditCourse(course)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="text-red-400 hover:underline"
-                    onClick={() => handleDeleteCourse(course._id)}
-                  >
-                    Delete
-                  </button>
-                  <button
-                    className="text-emerald-400 hover:underline"
-                    onClick={() => handleAssignTeachers(course._id, course.instructors)}
-                  >
-                    Assign
-                  </button>
-                  <button
-                    className={`text-blue-400 hover:underline ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                    onClick={() => handleViewAssignments(course._id)}
-                    disabled={loading}
-                  >
-                    {loading ? "Loading..." : "View"}
-                  </button>
+        {tableLoaing ? (
+          <tr>
+            <td colSpan={6}><TableLoadingSpinner /></td>
+         </tr>
+  
+) : filteredCourses.length > 0 ? (
+    filteredCourses.map((course) => (
+      <tr key={course._id} className="border-b border-gray-700 hover:bg-gray-800">
+        <td className="p-3">{course.code}</td>
+        <td className="p-3">{course.name}</td>
+        <td className="p-3">{course.description}</td>
+        <td className="p-3">
+          {course.classIds.length > 0
+            ? course.classIds
+                .map((classId) => classes.find((cls) => cls._id === classId)?.className)
+                .join(", ")
+            : "No classes assigned"}
+        </td>
+        <td className="p-3">
+          {(course?.unassignedSectionNames?.length ?? 0) > 0
+            ? course.unassignedSectionNames?.join(", ")
+            : "No Unassigned exist"}
+        </td>
+        <td className="p-3 flex justify-center gap-3">
+          <button
+            className="text-yellow-400 hover:underline"
+            onClick={() => handleEditCourse(course)}
+          >
+            Edit
+          </button>
+          <button
+            className="text-red-400 hover:underline"
+            onClick={() => handleDeleteCourse(course._id)}
+          >
+            Delete
+          </button>
+          <button
+            className="text-emerald-400 hover:underline"
+            onClick={() => handleAssignTeachers(course._id, course.instructors)}
+          >
+            Assign
+          </button>
+          <button
+            className={`text-blue-400 hover:underline ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            onClick={() => handleViewAssignments(course._id)}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "View"}
+          </button>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan={6} className="text-center p-4 text-gray-400">
+        No courses found
+      </td>
+    </tr>
+  )}
+</tbody>
 
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={6} className="text-center p-4 text-gray-400">
-                No courses found
-              </td>
-            </tr>
-          )}
-        </tbody>
       </table>
     </div>
 

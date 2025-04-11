@@ -4,6 +4,5 @@ export interface Course {
   code: string;
   description: string;
   classIds: string[];
-  instructors: string[];
   isActive: number;
 }

@@ -76,7 +76,7 @@ useEffect(() => {
           ...entry.course,
           unassignedSectionNames: entry.unassignedSectionNames,
         }));
-
+      
       setCourses(activeCourses);
     } catch (err) {
       console.error("Failed to fetch courses:", err);
@@ -119,7 +119,7 @@ useEffect(() => {
         throw new Error("Failed to fetch sections");
       }
       const data = await response.json();
-      
+      console.log('section data', data);
       // Map sections to include class names
       const sectionsWithClassNames = data.map((section: Section) => {
         const classObj = classes.find((cls) => cls._id === section.classID);
@@ -170,31 +170,37 @@ useEffect(() => {
           throw new Error(data.message || "Failed to save course");
         }
   
-        if (isEditing) {
-          setCourses(courses.map((course) => (course._id === editingCourseId ? data : course)));
-        } else {
-          setCourses([...courses, data]);
+        // Update course list in state
+        setCourses(prev =>
+          isEditing
+            ? prev.map(course => (course._id === editingCourseId ? data : course))
+            : [...prev, data]
+        );
+  
+        // OPTIONAL: If this course was newly created, you might want to also
+        // prefill `selectedCourseId` so it can be used for section-teacher assignment
+        if (!isEditing) {
+          setSelectedCourseId(data._id); // if needed for assignment modal
         }
   
-        // Reset form and close modal
+        // Reset all form states
         setNewCourse({ _id: "", name: "", code: "", instructors: [], description: "", classIds: [], isActive: 1 });
         setSelectedClassIds([]);
         setModalOpen(false);
         setIsEditing(false);
         setEditingCourseId(null);
   
-        // Show success toast
         toast.success(successMessage, { autoClose: 3000 });
+  
       } catch (err: unknown) {
-          console.error("Failed to save course:", (err as Error).message);
-          toast.error(`${(err as Error).message}`, { autoClose: 5000 });
         console.error("Failed to save course:", err);
-        toast.error("An unexpected error occurred.", { autoClose: 5000 });
+        toast.error((err as Error).message || "An unexpected error occurred.", { autoClose: 5000 });
       }
     } else {
       toast.warn("Please fill in all fields before saving.", { autoClose: 3000 });
     }
   };
+  
   
   const handleEditCourse = (course: Course) => {
     setNewCourse(course);
@@ -241,13 +247,13 @@ useEffect(() => {
   
   const handleSaveTeacherAssignments = async () => {
     try {
-      // Filter out sections with no teacher assigned and create valid assignments
+      // Step 0: Prepare valid assignments
       const validAssignments = Object.entries(sectionAssignments)
-        .filter(([teacherId]) => teacherId)
+        .filter(([, teacherId]) => teacherId)
         .map(([sectionId, teacherId]) => {
           const section = sections.find(s => s._id === sectionId);
           if (!section) throw new Error(`Section ${sectionId} not found`);
-          
+  
           return {
             section: sectionId,
             teacher: teacherId,
@@ -280,9 +286,9 @@ useEffect(() => {
   
       const course = courses.find(c => c._id === selectedCourseId);
       if (!course) throw new Error("Course not found");
-      
-      const updatedCourse = { 
-        ...course, 
+  
+      const updatedCourse = {
+        ...course,
         instructors: assignedTeachers,
         assignedSections: validAssignments.map(a => ({
           sectionId: a.section,
@@ -300,10 +306,24 @@ useEffect(() => {
   
       if (!courseResponse.ok) throw new Error("Failed to update course with assigned teachers");
   
-      // Step 4: Update state
       const updatedCourseData = await courseResponse.json();
+  
+      // Step 4: Update state and sync unassigned sections locally
       setCourses(prevCourses =>
-        prevCourses.map(c => (c._id === selectedCourseId ? updatedCourseData : c))
+        prevCourses.map(c => {
+          if (c._id !== selectedCourseId) return c;
+  
+          const updatedUnassigned = (c.unassignedSectionNames ?? []).filter(sectionName =>
+            !validAssignments.some(assignment =>
+              sectionName === `${assignment.sectionName} (${assignment.className})`
+            )
+          );
+  
+          return {
+            ...updatedCourseData,
+            unassignedSectionNames: updatedUnassigned
+          };
+        })
       );
   
       // Step 5: Reset modal and selections
@@ -312,7 +332,7 @@ useEffect(() => {
       toast.success("Teachers assigned successfully!", { autoClose: 2000 });
   
     } catch (err) {
-      toast.error(` ${(err as Error).message}`, {
+      toast.error(`${(err as Error).message}`, {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -321,9 +341,9 @@ useEffect(() => {
         draggable: true,
         theme: "colored",
       });
-  
     }
   };
+  
 // Handler for assigning teachers to sections
 const handleTeacherAssignment = (sectionId : string, teacherId: string) => {
   setSectionAssignments(prev => ({
@@ -406,10 +426,23 @@ return (
             : "No classes assigned"}
         </td>
         <td className="p-3">
-          {(course?.unassignedSectionNames?.length ?? 0) > 0
-            ? course.unassignedSectionNames?.join(", ")
-            : "No Unassigned exist"}
+          {(course?.unassignedSectionNames ?? []).length > 0 ? (
+            <div className="text-red-400 text-sm space-x-2 flex flex-wrap">
+              {(course.unassignedSectionNames ?? []).map((section, idx) => (
+                <span key={idx} className="whitespace-nowrap">
+                  {section}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-400 italic">No Unassigned Section exist</span>
+          )}
         </td>
+
+
+
+
+
         <td className="p-3 flex justify-center gap-3">
           <button
             className="text-yellow-400 hover:underline"

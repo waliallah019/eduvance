@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
-import mongoose from "mongoose";
 import Course from "../models/Course";
 import Section from "../models/Section";
 import Class from "../models/Class";
-import CourseAssignment from "../models/CourseAssignment";
-import ICourseAssignment from "../interface/courseAssignment.interface";
 
 export const getClasses = async (req: Request, res: Response): Promise<void> => {
   try {

@@ -1,69 +1,48 @@
-# Eduvance
+<h1 align="center">Eduvance 🎓</h1>
+<p align="center">
+  <i>AI-Enhanced School Management & LMS System</i><br/>
+  <b>MERN + TypeScript | Modern. Smart. Scalable.</b>
+</p>
 
-**Eduvance** is an AI-powered School Management and Learning Management System (LMS) that aims to revolutionize how educational institutions operate. It is designed to close the gap in traditional systems by introducing automation, predictive analytics, and intelligent insights into day-to-day school operations.
-
----
-
-## 🚀 Vision
-
-To become the most advanced, AI-integrated school ecosystem that empowers administrators, teachers, students, and parents with smarter tools and actionable data.
-
----
-
-## 🎯 Core Features
-
-- 📊 **AI-Based Student Performance Analytics**
-- 📝 **Automated Attendance & Leave Management**
-- 🧠 **Personalized Learning Recommendations**
-- 📅 **Dynamic Timetable & Exam Scheduling**
-- 📂 **Digital Homework, Results & Report Cards**
-- 📣 **Parental Notification System**
-- 🧑‍🤝‍🧑 **Role-Based Access (Admin, Teacher, Student, Parent)**
-- 🔐 **Secure Authentication with Audit Logs**
+<p align="center">
+  <img src="https://img.shields.io/badge/Tech-MERN%20+%20TypeScript-blue?style=flat-square"/>
+  <img src="https://img.shields.io/badge/AI%20Ready-✔️-green?style=flat-square"/>
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square"/>
+</p>
 
 ---
 
-## 👥 User Roles & Stories
+## 🌟 About Eduvance
 
-### 🧑‍🏫 Teachers
-- Upload marks and homework in seconds.
-- Monitor class performance using smart insights.
-- Communicate directly with parents and students.
+**Eduvance** is an AI-first school management and learning system designed to modernize how schools operate. It's not just a dashboard—it's a powerful ecosystem built on the MERN stack with TypeScript for scalability and type safety, and AI modules that help schools act smarter.
 
-### 👨‍🎓 Students
-- Track assignments, marks, and attendance.
-- Get AI-generated weak topic recommendations.
-- Take practice tests and access learning resources.
-
-### 👩‍👧 Parents
-- Receive real-time updates on child’s progress.
-- Manage multiple children under one profile.
-- Communicate with teachers and view report cards.
-
-### 🧑‍💼 Administrators
-- Manage users, classes, roles, and subjects.
-- View analytics dashboards and system usage logs.
-- Handle fee approvals and leave requests.
+> 💡 *"From reactive management to predictive insight—Eduvance is the leap forward schools needed."*
 
 ---
 
-## 🧠 AI Capabilities
+## 🧠 Core Features
 
-- 📉 Dropout risk prediction
-- 📚 Personalized study plan generator
-- ⏰ Automated schedule conflict resolver
-- 📈 Student trend analysis and teacher alerts
+| Module             | Description |
+|--------------------|-------------|
+| 🧑‍🏫 **Teacher Tools**     | Attendance, marks upload, student progress, smart alerts |
+| 👨‍🎓 **Student Dashboard** | Personalized learning, AI-based suggestions, assignment tracking |
+| 👩‍👧 **Parent Portal**     | Real-time insights on child’s performance, attendance, fee status |
+| 🏫 **Admin Panel**        | School-wide user, fee, class, and exam management |
+| 📊 **AI Insights**        | Dropout prediction, study plan suggestions, topic difficulty analysis |
 
 ---
 
-## 🧱 Tech Stack
+## 🔧 Tech Stack
 
-- **Frontend**: Flutter (Web & Mobile)
-- **Backend**: Node.js / Django
-- **Database**: PostgreSQL / MongoDB
-- **AI/ML**: Python (Scikit-learn, TensorFlow)
-- **Authentication**: JWT / OAuth2
-- **DevOps**: Docker, GitHub Actions, AWS
+| Layer        | Technology                          |
+|--------------|--------------------------------------|
+| **Frontend** | React.js + TypeScript (Vite)         |
+| **Backend**  | Node.js + Express.js + TypeScript    |
+| **Database** | MongoDB + Mongoose                   |
+| **AI/ML**    | Python (FastAPI/Flask Bridge)        |
+| **Auth**     | JWT + Role-Based Access Control      |
+| **DevOps**   | Docker, GitHub Actions, Nginx, AWS   |
 
 ---
 
